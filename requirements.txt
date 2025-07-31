@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+statsmodels
+Pillow
+
+
+
+numpy
+streamlit
+scikit-learn
+matplotlib
+# ... any others you're using
