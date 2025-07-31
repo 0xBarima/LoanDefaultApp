@@ -104,7 +104,7 @@ st.markdown(
 # Function to hold pages
 def Home_Page():
     # Load and display logo image
-    logo = Image.open(r"C:\Users\HP\PycharmProjects\LoanDefaultApp\New_image.jpg")
+    logo = Image.open(r".streamlit/New_image.jpg")
     st.image(logo, use_container_width=True)
 
     st.title("Loan Default Prediction Web App")
