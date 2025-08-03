@@ -97,6 +97,20 @@ def load_data():
 
 # STREAMLIT PAGE FUNCTIONS
 def Home_Page():
+      
+    
+    # Add data upload section
+    st.subheader("Data Setup")
+    if 'data_loaded' not in st.session_state or not st.session_state['data_loaded']:
+        uploaded_file = st.file_uploader("Upload your loan data (CSV format)", type="csv")
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv("Loan_Default.csv")
+                st.session_state['raw_data'] = df
+                st.session_state['data_loaded'] = True
+                st.success("Data uploaded successfully!")
+            except Exception as e:
+                st.error(f"Error reading file: {str(e)}")
 
     #LOGO
     logo = Image.open("LDP.jpeg")
@@ -760,5 +774,6 @@ pages = {
 
 selection = st.sidebar.selectbox("Select Page", list(pages.keys()))
 pages[selection]()
+
 
 
