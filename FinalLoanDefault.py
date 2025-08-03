@@ -52,58 +52,45 @@ def load_data():
     return df
 
 
-def create_preprocessor():
-    """Creates a comprehensive preprocessing pipeline that:
-    1. Separates numerical and categorical features
-    2. For numerical features:
-       - Imputes missing values with median (robust to outliers)
-       - Standardizes features (mean=0, std=1) for model convergence
-    3. For categorical features:
-       - Imputes missing values with most frequent category
-       - One-hot encodes for model compatibility
-    4. Uses ColumnTransformer for parallel processing of different feature types"""
-    df = load_data()
-    X = df.drop('Status', axis=1)
-
-    # Feature type identification
-    numerical_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
-
-    # Save feature types for reference
-    save_artifact({'numerical': numerical_cols, 'categorical': categorical_cols},
-                  "2_column_types.pkl")
-
-    # Numerical pipeline
-    numerical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='median')),  # Robust to outliers
-        ('scaler', StandardScaler())])  # Helps models like SVM and neural networks
-
-    # Categorical pipeline
-    categorical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='most_frequent')),  # Preserves mode
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))])  # Handles new categories
-
-    # Combined preprocessing
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numerical_transformer, numerical_cols),
-            ('cat', categorical_transformer, categorical_cols)])
-
-    # # Fit and save the preprocessor
-    preprocessor.fit(X)
-    save_artifact(preprocessor, "3_preprocessor.pkl")
-
-    # Transform and save processed data
-    X_processed = preprocessor.transform(X)
-    num_features = preprocessor.named_transformers_['num'].get_feature_names_out()
-    cat_features = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out()
-    all_features = np.concatenate([num_features, cat_features])
-
-    processed_df = pd.DataFrame(X_processed, columns=all_features)
-    processed_df['Status'] = df['Status'].values
-    processed_df.to_csv(f"{DATA_DIR}/4_processed_data.csv", index=False)
-
-    return preprocessor
+@st.cache_data
+def load_data():
+    """Loads and caches raw loan data with initial cleaning"""
+    try:
+        # Try multiple possible file locations
+        possible_paths = [
+            "Loan_Default.csv",
+            "data/Loan_Default.csv",
+            "../Loan_Default.csv",
+            os.path.join(DATA_DIR, "Loan_Default.csv")
+        ]
+        
+        for filepath in possible_paths:
+            try:
+                df = pd.read_csv(filepath)
+                st.session_state['data_loaded'] = True
+                df = df.drop(columns=['ID', 'dtir1', 'submission_of_application', 'year'], errors='ignore')
+                df.to_csv(f"{DATA_DIR}/1_raw_data.csv", index=False)
+                return df
+            except FileNotFoundError:
+                continue
+        
+        # If no file found, show upload option
+        st.warning("Default dataset not found. Please upload your data.")
+        uploaded_file = st.file_uploader("Upload Loan Data (CSV)", type="csv")
+        
+        if uploaded_file is not None:
+            df = pd.read_csv(uploaded_file)
+            st.session_state['data_loaded'] = True
+            df = df.drop(columns=['ID', 'dtir1', 'submission_of_application', 'year'], errors='ignore')
+            df.to_csv(f"{DATA_DIR}/1_raw_data.csv", index=False)
+            return df
+        else:
+            st.error("No data available. Please upload a CSV file.")
+            return pd.DataFrame()  # Return empty DataFrame as fallback
+            
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
+        return pd.DataFrame()  # Return empty DataFrame as fallback
 
 
 
@@ -773,4 +760,5 @@ pages = {
 
 selection = st.sidebar.selectbox("Select Page", list(pages.keys()))
 pages[selection]()
+
 
