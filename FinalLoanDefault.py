@@ -59,44 +59,51 @@ def load_data():
     return df
 
 def create_preprocessor():
-    """Create and fit a preprocessing pipeline for the loan data.
-        """
+    """Create and fit a preprocessing pipeline for the loan data."""
     df = load_data()
-    X = df.drop('loan_amount', axis=1)
 
-    # Identify numerical and categorical columns
+    if 'Status' not in df.columns:
+        raise ValueError("The dataset must contain a 'Status' column as the target variable.")
+
+    X = df.drop('Status', axis=1)
+
     numerical_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    categorical_cols = X.select_dtypes( include=['object']).columns.tolist()
+    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+
     save_artifact({'numerical': numerical_cols, 'categorical': categorical_cols},
                   "2_column_types.pkl")
 
-    # Numerical feature pipeline: impute missing values with median and standardize
     numerical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
-        ('scaler', StandardScaler())])
+        ('scaler', StandardScaler())
+    ])
 
-    # Categorical feature pipeline: impute missing values with mode and one-hot encode
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
 
-    # Combine pipelines in ColumnTransformer
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', numerical_transformer, numerical_cols),
-            ('cat', categorical_transformer, categorical_cols)])
+            ('cat', categorical_transformer, categorical_cols)
+        ]
+    )
+
     preprocessor.fit(X)
     save_artifact(preprocessor, "3_preprocessor.pkl")
 
-    # Transform data and save processed version
     X_processed = preprocessor.transform(X)
     num_features = preprocessor.named_transformers_['num'].get_feature_names_out()
     cat_features = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out()
     all_features = np.concatenate([num_features, cat_features])
+
     processed_df = pd.DataFrame(X_processed, columns=all_features)
-    processed_df['loan_amount'] = df['loan_amount'].values
+    processed_df['Status'] = df['Status'].values
     processed_df.to_csv(f"{DATA_DIR}/4_processed_data.csv", index=False)
+
     return preprocessor
+
 
 
 # --- STREAMLIT PAGES ---
@@ -697,4 +704,5 @@ pages = {
 
 selection = st.sidebar.selectbox("Select Page", list(pages.keys()))
 pages[selection]()
+
 
